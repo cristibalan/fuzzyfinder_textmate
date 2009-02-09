@@ -91,28 +91,25 @@ RUBY
 
   function! g:FuzzyFinderMode.TextMate.on_complete(base)
     if exists('g:fuzzy_enumerating_limit')
-      let l:limit = g:fuzzy_enumerating_limit
+      let l:enumerating_limit = g:fuzzy_enumerating_limit
     else
-      let l:limit = self.enumerating_limit
+      let l:enumerating_limit = self.enumerating_limit
     endif
     let result = []
     ruby << RUBY
 
       text = VIM.evaluate('s:RemovePrompt(a:base,self.prompt)')
-      limit = VIM.evaluate('l:limit').to_i
+      enumerating_limit = VIM.evaluate('l:enumerating_limit').to_i
       path_display = VIM.evaluate("g:fuzzy_path_display")
+      ceiling = VIM.evaluate('g:fuzzy_ceiling').to_i
 
-      matches = finder.find(text, limit)
-      matches.sort_by { |a| [-a[:score], a[:path]] }.each_with_index do |match, index|
+      matches = finder.find(text, ceiling)
+      matches_length = matches.length
+      matches.sort_by { |a| [-a[:score], a[:path]] }[0,enumerating_limit].each_with_index do |match, index|
         word = match[:path]
-        case path_display
-          when "full"
-            abbr = "%2d: %s" % [index+1, match[:path]]
-          else
-            abbr = "%2d: %s" % [index+1, match[:abbr]]
-        end
+        abbr = "%2d: %s" % [index+1, match[path_display.to_sym]]
         menu = "[%5d]" % [match[:score] * 10000]
-        VIM.evaluate("add(result, { 'word' : fnamemodify(#{word.inspect},':~:.'), 'abbr' : #{abbr.inspect}, 'menu' : #{menu.inspect} })")
+        VIM.evaluate("add(result, { 'word' : fnamemodify(#{word.inspect},':~:.'), 'abbr' : #{abbr.inspect}, 'menu' : #{menu.inspect}, 'ranks': [#{index}] })")
       end
 RUBY
     return result
@@ -139,4 +136,3 @@ end "}}}
 call InstantiateTextMateMode()
 
 endif
-
